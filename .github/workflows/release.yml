@@ -1,0 +1,57 @@
+name: Release
+
+# Bump version in pyproject.toml, commit, then push a matching tag:
+#   git tag v1.1.0 && git push origin v1.1.0
+# Pre-releases: version = "0.1.0rc1" in pyproject.toml, tag v0.1.0-rc1.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    # Built on macOS 26, the oldest supported version, so it also runs on macOS 27.
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v7.1.0
+        id: python
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.3.2
+
+      - name: Install dependencies
+        run: uv sync --locked --python "${{ steps.python.outputs.python-path }}"
+
+      - name: Check tag matches version
+        # Compared as PEP 440 versions, so the tag v0.1.0-rc1 matches version 0.1.0rc1.
+        run: |
+          .venv/bin/python - <<'PY'
+          import os, sys, tomllib
+          from packaging.version import Version
+          tag = os.environ["GITHUB_REF_NAME"]
+          version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          if not tag.startswith("v") or Version(tag[1:]) != Version(version):
+              sys.exit(f"::error::Tag {tag} does not match version {version} in pyproject.toml")
+          PY
+
+      - name: Build
+        run: PYTHON_VERSION="${{ steps.python.outputs.python-path }}" ./build.sh
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Alphas, betas and release candidates (v0.1.0-rc1, v1.0.0b2, ...) are marked as pre-releases.
+          PRERELEASE=$(.venv/bin/python -c 'import sys; from packaging.version import Version; print("--prerelease" if Version(sys.argv[1]).is_prerelease else "")' "${GITHUB_REF_NAME#v}")
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg --title "Call Switcher $GITHUB_REF_NAME" --generate-notes $PRERELEASE

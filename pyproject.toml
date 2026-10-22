@@ -1,0 +1,53 @@
+[project]
+name = "call-switcher"
+version = "0.1.0rc1"
+description = "macOS menu bar app that places tel: links through a phone app, PhonixPBX or Asterisk ARI"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.12"
+dependencies = [
+    "pyobjc-framework-Cocoa",
+    "pyobjc-framework-ServiceManagement",
+    "truststore",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+build = ["packaging", "py2app", "setuptools"]
+
+[tool.uv]
+# An app, not a library: uv only installs the dependencies, not the project itself.
+package = false
+default-groups = ["dev", "build"]
+# py2app needs a framework build of Python (Homebrew or python.org), not uv's standalone builds.
+python-preference = "only-system"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+# Read by setup.py and handed to py2app (py2app 0.28 has no pyproject support of its own).
+# CFBundleShortVersionString and CFBundleVersion are filled in from project.version.
+[tool.py2app]
+app = ["run.py"]
+packages = ["call_switcher"]
+# python.org builds ship Tcl/Tk; bundling them breaks ad-hoc signing (unsignable .a stubs).
+excludes = ["tkinter", "_tkinter"]
+iconfile = "assets/AppIcon.icns"
+
+[tool.py2app.plist]
+CFBundleName = "Call Switcher"
+CFBundleDisplayName = "Call Switcher"
+CFBundleIdentifier = "org.phonixpbx.callswitcher"
+LSUIElement = true
+LSMinimumSystemVersion = "26.0"
+NSHumanReadableCopyright = "Copyright 2026 The Call Switcher contributors. Licensed under the Apache License 2.0."
+# English is the source language; listing the others makes macOS show its own dialogs
+# (open panel, alerts) in the same language as the app.
+CFBundleDevelopmentRegion = "en"
+CFBundleLocalizations = ["en", "de", "fr", "it", "es", "pt"]
+
+[[tool.py2app.plist.CFBundleURLTypes]]
+CFBundleURLName = "Telephone URL"
+CFBundleURLSchemes = ["tel", "callto", "sip"]

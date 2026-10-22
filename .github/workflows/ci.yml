@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS 26
+            runner: macos-26
+            preview: false
+          # macOS 27 is only available as the "xcode-27" public preview image so far.
+          - name: macOS 27
+            runner: xcode-27
+            preview: true
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.preview }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v7.1.0
+        id: python
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.3.2
+
+      - name: Install dependencies
+        run: uv sync --locked --python "${{ steps.python.outputs.python-path }}"
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest -v
+
+      - name: Build app
+        run: PYTHON_VERSION="${{ steps.python.outputs.python-path }}" ./build.sh
+
+      - name: Check bundle
+        run: |
+          APP="dist/Call Switcher.app"
+          plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes json -o - "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          # The bundle must not depend on libraries outside of it (e.g. Homebrew).
+          ! find "$APP" -type f \( -name "*.so" -o -name "*.dylib" \) -print0 \
+            | xargs -0 otool -L | grep -E "/opt/homebrew|/usr/local"
+
+      - name: Launch app
+        run: |
+          # py2app reports missing modules only at launch, with a "Launch error" dialog.
+          "dist/Call Switcher.app/Contents/MacOS/Call Switcher" > launch.log 2>&1 &
+          sleep 10
+          kill $! || true
+          cat launch.log
+          ! grep -E "Launch error|Traceback" launch.log
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CallSwitcher-${{ matrix.runner }}
+          path: dist/*.dmg
+          archive: false  # downloadable as the DMG itself, not zipped
+          if-no-files-found: error
