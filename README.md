@@ -12,11 +12,10 @@ General → Language & Region and falls back to English.
 
 ## Installation
 
-1. Open the DMG and drag "Call Switcher" onto the "Applications" folder.
-2. Open the app. macOS blocks it the first time because it is not notarized. Go to
-   System Settings → Privacy & Security and click **Open Anyway** next to "Call Switcher",
-   then confirm. Alternatively, in Terminal:
-   `xattr -dr com.apple.quarantine "/Applications/Call Switcher.app"`
+1. Download the DMG from [Releases](https://github.com/PhonixPBX/Call-Switcher/releases),
+   open it and drag "Call Switcher" onto the "Applications" folder.
+2. Open the app. The first time, macOS blocks it; see
+   [Opening the app the first time](#opening-the-app-the-first-time).
 3. A phone icon appears in the menu bar. Choose **Settings…**
 4. Pick a method at the top, set it up and turn it on with **Enabled**. All three can be
    configured; only the enabled ones are used (marked with ✓):
@@ -33,6 +32,29 @@ link. If only one is enabled, it dials right away.
 
 The ARI password and the Phonix token are stored in the keychain (service
 `org.phonixpbx.callswitcher`, accounts `ari` and `phonix`).
+
+### Opening the app the first time
+
+Call Switcher is signed ad hoc but not notarized by Apple, so macOS refuses to open it after
+it was downloaded and says it "could not verify" the app. The app is not damaged. Since
+macOS 15, right-click → Open no longer gets around this. Do this once:
+
+1. Open the app. When macOS shows the warning, click **Done**, not **Move to Trash**.
+2. Open System Settings → Privacy & Security and scroll down. Next to the message about
+   "Call Switcher", click **Open Anyway** and confirm with your password or Touch ID.
+3. Open the app again and click **Open**. macOS does not ask again after that.
+
+The **Open Anyway** button only shows up for about an hour after the blocked attempt. If it
+is missing, open the app again first.
+
+Alternatively, remove the download flag in Terminal, then open the app normally:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Call Switcher.app"
+```
+
+If macOS already refuses to open the DMG, do the same for the DMG, for example
+`xattr -d com.apple.quarantine ~/Downloads/CallSwitcher-*.dmg`.
 
 ## PhonixPBX
 
