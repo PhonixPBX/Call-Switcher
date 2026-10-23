@@ -1,6 +1,6 @@
 [project]
 name = "call-switcher"
-version = "0.1.0rc1"
+version = "0.1.0rc2"
 description = "macOS menu bar app that places tel: links through a phone app, PhonixPBX or Asterisk ARI"
 readme = "README.md"
 license = "Apache-2.0"
