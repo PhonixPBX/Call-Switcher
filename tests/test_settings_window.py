@@ -47,6 +47,7 @@ def test_layout_fits_in_every_language(language):
     i18n.set_language(language)
     try:
         c = SettingsWindowController.alloc().init()
+        layouts = set()
         for mode in settings.MODES:
             c.mode_picker.setSelectedSegment_(settings.MODES.index(mode))
             c._update_visible_rows()
@@ -56,5 +57,9 @@ def test_layout_fits_in_every_language(language):
             assert (stack.origin.x, stack.origin.y) == (MARGIN, MARGIN)
             assert size.width - stack.origin.x - stack.size.width == MARGIN
             assert size.width < 800, f"{language}/{mode}: window too wide ({size.width})"
+            field_x = c.grid.cellForView_(c.mode_picker).contentView().frame().origin.x
+            layouts.add((c.window.frame().size.width, c.window.frame().size.height, field_x))
+        # Switching methods must not resize the window or move the fields.
+        assert len(layouts) == 1, layouts
     finally:
         i18n.set_language("en")

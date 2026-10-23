@@ -12,14 +12,17 @@ from AppKit import (
     NSFileManager,
     NSFont,
     NSGridCell,
+    NSGridCellPlacementTrailing,
     NSGridView,
-    NSLayoutAttributeTrailing,
+    NSLayoutAttributeLeading,
     NSModalResponseOK,
     NSOpenPanel,
     NSSegmentedControl,
     NSSegmentSwitchTrackingSelectOne,
     NSSecureTextField,
     NSStackView,
+    NSStackViewGravityBottom,
+    NSStackViewGravityTop,
     NSStackViewGravityTrailing,
     NSTextAlignmentRight,
     NSTextField,
@@ -158,6 +161,10 @@ class SettingsWindowController(NSObject):
         self.grid = grid
         grid.setRowSpacing_(8)
         grid.setColumnSpacing_(10)
+        # Labels of all methods share one column width, so the fields do not move when switching.
+        labels = grid.columnAtIndex_(0)
+        labels.setWidth_(max(row[0].fittingSize().width for row in rows))
+        labels.setXPlacement_(NSGridCellPlacementTrailing)
 
         cancel = NSButton.buttonWithTitle_target_action_(_("Cancel"), self, "cancel:")
         cancel.setKeyEquivalent_("\x1b")
@@ -166,10 +173,14 @@ class SettingsWindowController(NSObject):
         buttons = _hstack([])
         buttons.setViews_inGravity_([cancel, save], NSStackViewGravityTrailing)
 
-        content = NSStackView.stackViewWithViews_([grid, buttons])
+        # Form at the top, buttons at the bottom; a shorter method leaves the space in between.
+        content = NSStackView.alloc().init()
         content.setOrientation_(NSUserInterfaceLayoutOrientationVertical)
-        content.setAlignment_(NSLayoutAttributeTrailing)
+        content.setAlignment_(NSLayoutAttributeLeading)
         content.setSpacing_(20)
+        content.setViews_inGravity_([grid], NSStackViewGravityTop)
+        content.setViews_inGravity_([buttons], NSStackViewGravityBottom)
+        buttons.widthAnchor().constraintEqualToAnchor_(content.widthAnchor()).setActive_(True)
         content.setTranslatesAutoresizingMaskIntoConstraints_(False)
 
         # Pin the stack with explicit margins; NSStackView edge insets are not reliable as window content.
@@ -183,6 +194,15 @@ class SettingsWindowController(NSObject):
             container.bottomAnchor().constraintEqualToAnchor_constant_(content.bottomAnchor(), margin),
         ]:
             constraint.setActive_(True)
+
+        # Fixed window size: large enough for the biggest method in the current language.
+        sizes = []
+        for mode in settings.MODES:
+            self._show_rows_of(mode)
+            container.layoutSubtreeIfNeeded()
+            sizes.append(container.fittingSize())
+        container.widthAnchor().constraintEqualToConstant_(max(size.width for size in sizes)).setActive_(True)
+        container.heightAnchor().constraintEqualToConstant_(max(size.height for size in sizes)).setActive_(True)
 
         self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, 520, 480),
@@ -263,18 +283,13 @@ class SettingsWindowController(NSObject):
 
     @objc.python_method
     def _update_visible_rows(self):
-        selected = self._selected_mode()
+        self._show_rows_of(self._selected_mode())
+
+    @objc.python_method
+    def _show_rows_of(self, selected):
         for mode, indexes in self.mode_rows.items():
             for i in indexes:
                 self.grid.rowAtIndex_(i).setHidden_(mode != selected)
-
-        # Resize to fit, keeping the title bar where it is.
-        self.container.layoutSubtreeIfNeeded()
-        frame = self.window.frame()
-        new = self.window.frameRectForContentRect_(NSMakeRect(0, 0, *self.container.fittingSize()))
-        new.origin.x = frame.origin.x
-        new.origin.y = frame.origin.y + frame.size.height - new.size.height
-        self.window.setFrame_display_(new, True)
 
     @objc.python_method
     def _refresh_handler_label(self):
