@@ -36,20 +36,25 @@ def test_pipe_name_renew(tmp_path):
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes")
-def test_pipe_server_of_current_user(qapp, tmp_path):
-    from call_switcher.qt.host_windows import pipe_server_is_current_user
+def test_pipe_peers_of_current_user(qapp, tmp_path):
+    from call_switcher.qt.host_windows import pipe_name_is_free, pipe_peer_is_current_user
 
     name = app.pipe_name(tmp_path)
+    assert pipe_name_is_free(name)
     server = QLocalServer()
     server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     assert server.listen(name), server.errorString()
     try:
-        sock = QLocalSocket()
-        sock.connectToServer(name)
-        assert sock.waitForConnected(2000), sock.errorString()
-        assert int(sock.socketDescriptor()) not in (0, -1)
-        assert pipe_server_is_current_user(int(sock.socketDescriptor()))
-        sock.abort()
+        assert not pipe_name_is_free(name)
+        client = QLocalSocket()
+        client.connectToServer(name)
+        assert client.waitForConnected(2000), client.errorString()
+        assert int(client.socketDescriptor()) not in (0, -1)
+        assert pipe_peer_is_current_user(int(client.socketDescriptor()), "server")
+        assert server.waitForNewConnection(2000)
+        accepted = server.nextPendingConnection()
+        assert pipe_peer_is_current_user(int(accepted.socketDescriptor()), "client")
+        client.abort()
     finally:
         server.close()
 

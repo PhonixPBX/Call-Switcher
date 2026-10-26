@@ -145,6 +145,10 @@ def _api():
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
     kernel32.GetNamedPipeServerProcessId.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.ULONG)]
+    kernel32.GetNamedPipeClientProcessId.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.ULONG)]
+    kernel32.CreateNamedPipeW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.DWORD,
+                                          wintypes.DWORD, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+    kernel32.CreateNamedPipeW.restype = wintypes.HANDLE
     kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
     kernel32.OpenProcess.restype = wintypes.HANDLE
     kernel32.GetCurrentProcess.restype = wintypes.HANDLE
@@ -173,14 +177,16 @@ def _process_user(process) -> bytes | None:
         kernel32.CloseHandle(token)
 
 
-def pipe_server_is_current_user(pipe: int) -> bool:
-    """Does a process of the current user serve this named pipe (client handle)?
+def pipe_peer_is_current_user(pipe: int, peer: str) -> bool:
+    """Is the other end of this named pipe ("server" or "client") a process of the current user?
 
-    Pipe names are visible to all users, so another user could create ours first.
+    Pipe names are visible to all users, so another user could create ours first and then
+    read what we send or connect to us.
     """
     ctypes, wintypes, kernel32, advapi32 = _api()
     pid = wintypes.ULONG()
-    if not kernel32.GetNamedPipeServerProcessId(pipe, ctypes.byref(pid)):
+    get_pid = kernel32.GetNamedPipeServerProcessId if peer == "server" else kernel32.GetNamedPipeClientProcessId
+    if not get_pid(pipe, ctypes.byref(pid)):
         return False
     process = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
     if not process:
@@ -194,6 +200,17 @@ def pipe_server_is_current_user(pipe: int) -> bool:
         return False
     sid = ctypes.POINTER(ctypes.c_void_p)
     return bool(advapi32.EqualSid(ctypes.cast(server, sid)[0], ctypes.cast(own, sid)[0]))
+
+
+def pipe_name_is_free(name: str) -> bool:
+    """Can we create the first instance of this pipe? False if someone (else) already has it."""
+    ctypes, wintypes, kernel32, advapi32 = _api()
+    # PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE, one instance, default buffers.
+    handle = kernel32.CreateNamedPipeW(rf"\\.\pipe\{name}", 0x00000001 | 0x00080000, 0, 1, 0, 0, 0, None)
+    if handle in (None, wintypes.HANDLE(-1).value):  # INVALID_HANDLE_VALUE
+        return False
+    kernel32.CloseHandle(handle)
+    return True
 
 
 def request_autostart(enabled: bool, timeout: float = 0):
