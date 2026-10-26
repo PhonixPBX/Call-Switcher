@@ -76,14 +76,23 @@ def send_to_running(message: str) -> bool:
     if not sock.waitForConnected(500):
         return False
     if sys.platform == "win32":
-        from .host_windows import pipe_server_is_current_user
-        if not pipe_server_is_current_user(int(sock.socketDescriptor())):
+        from .host_windows import pipe_peer_is_current_user
+        if not pipe_peer_is_current_user(int(sock.socketDescriptor()), "server"):
             sock.abort()
             raise ForeignServer()
     sock.write(f"{message}\n".encode())
     sock.waitForBytesWritten(1000)
     sock.disconnectFromServer()
     return True
+
+
+def _from_current_user(sock: QLocalSocket) -> bool:
+    """Windows: only our own user may hand us URLs. On Linux the socket's directory and
+    permissions already allow no one else."""
+    if sys.platform != "win32":
+        return True
+    from .host_windows import pipe_peer_is_current_user
+    return pipe_peer_is_current_user(int(sock.socketDescriptor()), "client")
 
 
 class App:
@@ -96,8 +105,12 @@ class App:
         self.server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self.server.newConnection.connect(self._accept)
         # Qt does not ask Windows for the first instance of a pipe, so listening can work on a
-        # name another user created; `renew` (set when a client found such a pipe) avoids it.
+        # name another user created; take a new name then (`renew`: a client found such a pipe).
         name = socket_path(renew=renew)
+        if sys.platform == "win32":
+            from .host_windows import pipe_name_is_free
+            if not pipe_name_is_free(name):
+                name = socket_path(renew=True)
         QLocalServer.removeServer(name)  # left over from a crash; no other instance answered
         listening = self.server.listen(name)
         if not listening and sys.platform == "win32":
@@ -119,6 +132,10 @@ class App:
 
     def _accept(self):
         while (sock := self.server.nextPendingConnection()) is not None:
+            if not _from_current_user(sock):
+                sock.abort()
+                sock.deleteLater()
+                continue
             buffer = bytearray()
             sock.readyRead.connect(lambda sock=sock, buffer=buffer: buffer.extend(sock.readAll().data()))
 
