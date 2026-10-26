@@ -138,6 +138,64 @@ def set_default():
         raise HostError(str(e)) from e
 
 
+def _api():
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32.GetNamedPipeServerProcessId.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.ULONG)]
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    advapi32.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    advapi32.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+                                             ctypes.POINTER(wintypes.DWORD)]
+    advapi32.EqualSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    return ctypes, wintypes, kernel32, advapi32
+
+
+def _process_user(process) -> bytes | None:
+    """The TOKEN_USER of a process (its first field points to the user's SID), or None."""
+    ctypes, wintypes, kernel32, advapi32 = _api()
+    token = wintypes.HANDLE()
+    if not advapi32.OpenProcessToken(process, 0x0008, ctypes.byref(token)):  # TOKEN_QUERY
+        return None
+    try:
+        size = wintypes.DWORD()
+        advapi32.GetTokenInformation(token, 1, None, 0, ctypes.byref(size))  # TokenUser
+        buffer = ctypes.create_string_buffer(size.value)
+        if not advapi32.GetTokenInformation(token, 1, buffer, size, ctypes.byref(size)):
+            return None
+        return buffer
+    finally:
+        kernel32.CloseHandle(token)
+
+
+def pipe_server_is_current_user(pipe: int) -> bool:
+    """Does a process of the current user serve this named pipe (client handle)?
+
+    Pipe names are visible to all users, so another user could create ours first.
+    """
+    ctypes, wintypes, kernel32, advapi32 = _api()
+    pid = wintypes.ULONG()
+    if not kernel32.GetNamedPipeServerProcessId(pipe, ctypes.byref(pid)):
+        return False
+    process = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not process:
+        return False  # another user's process
+    try:
+        server = _process_user(process)
+    finally:
+        kernel32.CloseHandle(process)
+    own = _process_user(kernel32.GetCurrentProcess())
+    if server is None or own is None:
+        return False
+    sid = ctypes.POINTER(ctypes.c_void_p)
+    return bool(advapi32.EqualSid(ctypes.cast(server, sid)[0], ctypes.cast(own, sid)[0]))
+
+
 def request_autostart(enabled: bool, timeout: float = 0):
     winreg = _registry()
     try:
