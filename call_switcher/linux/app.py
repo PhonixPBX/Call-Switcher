@@ -6,6 +6,7 @@
 import argparse
 import os
 import pathlib
+import stat
 import sys
 import tempfile
 import threading
@@ -26,8 +27,19 @@ DIAL = "dial "
 ICON = pathlib.Path(__file__).parents[2] / "assets" / "icon.png"  # development checkout
 
 
+def _private_dir() -> str:
+    """A directory in /tmp only we can access, for systems without XDG_RUNTIME_DIR."""
+    path = os.path.join(tempfile.gettempdir(), f"call-switcher-{os.getuid()}")
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise SystemExit(f"{path} belongs to someone else or is accessible by others")
+    return path
+
+
 def socket_path() -> str:
-    runtime = os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()
+    # XDG_RUNTIME_DIR is private to the user (0700), unlike /tmp.
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or _private_dir()
     if host.in_flatpak():
         # Shared by all instances of the Flatpak, unlike /tmp.
         return os.path.join(runtime, "app", settings.BUNDLE_ID, "instance.sock")
@@ -53,6 +65,7 @@ class App:
         self.settings_dialog = None
 
         self.server = QLocalServer()
+        self.server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self.server.newConnection.connect(self._accept)
         QLocalServer.removeServer(socket_path())  # left over from a crash; no other instance answered
         self.server.listen(socket_path())

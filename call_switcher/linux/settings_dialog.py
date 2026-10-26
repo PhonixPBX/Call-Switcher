@@ -36,6 +36,13 @@ def _field(width, placeholder="", secure=False):
     return field
 
 
+def _plain_label():
+    """For text from outside (server errors, app names), which must not be read as HTML."""
+    label = QLabel()
+    label.setTextFormat(Qt.TextFormat.PlainText)
+    return label
+
+
 def _hbox(*widgets):
     box = QWidget()
     layout = QHBoxLayout(box)
@@ -82,7 +89,7 @@ class SettingsDialog(QDialog):
         self.caller_id = _field(260, _("optional"))
         self.ari_test = QPushButton(_("Test Connection"))
         self.ari_test.clicked.connect(lambda: self._test_connection(settings.MODE_ARI))
-        self.ari_status = QLabel()
+        self.ari_status = _plain_label()
 
         self.phonix_url = _field(260, "https://pbx.example.com")
         self.phonix_extension = _field(80, "100")
@@ -90,10 +97,10 @@ class SettingsDialog(QDialog):
         self.phonix_insecure = QCheckBox(_("Don’t verify certificate (self-signed)"))
         self.phonix_test = QPushButton(_("Test Connection"))
         self.phonix_test.clicked.connect(lambda: self._test_connection(settings.MODE_PHONIX))
-        self.phonix_status = QLabel()
+        self.phonix_status = _plain_label()
 
         self.login_item = QCheckBox(_("Start at login"))
-        self.handler_label = QLabel()
+        self.handler_label = _plain_label()
         self.make_default = QPushButton(_("Set as Default"))
         self.make_default.clicked.connect(self._make_default)
 
