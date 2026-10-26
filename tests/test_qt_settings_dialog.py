@@ -3,15 +3,15 @@ import sys
 
 import pytest
 
-if sys.platform != "linux":
-    pytest.skip("Linux frontend", allow_module_level=True)
+if sys.platform == "darwin":
+    pytest.skip("Linux and Windows frontend", allow_module_level=True)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from call_switcher import i18n, settings  # noqa: E402
-from call_switcher.linux import host, settings_dialog, ui  # noqa: E402
+from call_switcher.qt import host, settings_dialog, ui  # noqa: E402
 
 APPS = [("/usr/share/applications/linphone.desktop", "Linphone"), ("/usr/share/applications/jami.desktop", "Jami")]
 
@@ -24,8 +24,9 @@ def qapp():
 @pytest.fixture
 def dialog(qapp, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("APPDATA", str(tmp_path))
     monkeypatch.setattr(host, "list_phone_apps", lambda: APPS)
-    monkeypatch.setattr(host, "default_handler", lambda: "linphone.desktop")
+    monkeypatch.setattr(host, "default_handler", lambda: host.app_id(APPS[0][0]))
     monkeypatch.setattr(settings, "get_secret", lambda account: "")
     monkeypatch.setattr(settings, "set_secret", lambda account, secret: None)
     alerts = []

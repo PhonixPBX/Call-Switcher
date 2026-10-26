@@ -1,5 +1,6 @@
-"""Everything that has to happen on the host system rather than inside the Flatpak sandbox:
-listing and starting phone apps, the default handler for tel: links, and autostart.
+"""Linux part of the Qt app. Everything that has to happen on the host system rather than
+inside the Flatpak sandbox: listing and starting phone apps, the default handler for tel:
+links, and autostart.
 
 Inside the Flatpak, commands run through `flatpak-spawn --host`; in a development checkout
 they run directly. Paths of .desktop files are always host paths.
@@ -13,7 +14,10 @@ from .. import settings
 from ..dialer import SCHEMES, DialError
 from ..i18n import _
 
-DESKTOP_ID = f"{settings.BUNDLE_ID}.desktop"
+__all__ = ["OWN_ID", "HostError", "installed", "install_hint", "app_id", "list_phone_apps",
+           "forward_to_app", "default_handler", "set_default", "request_autostart"]
+
+DESKTOP_ID = OWN_ID = f"{settings.BUNDLE_ID}.desktop"
 
 # Prints "path<TAB>name" for every visible .desktop file that handles sip:, tel: or callto:,
 # in XDG order (user dir first). Only needs sh, find, grep and cut, which every host has.
@@ -38,6 +42,15 @@ def in_flatpak() -> bool:
     return os.path.exists("/.flatpak-info")
 
 
+def installed() -> bool:
+    """Runs as the Flatpak, not from a checkout (default handler and autostart need that)."""
+    return in_flatpak()
+
+
+def install_hint() -> str:
+    return _("Install the Flatpak to make Call Switcher the default for tel: links.")
+
+
 def host(cmd: list[str]) -> list[str]:
     return ["flatpak-spawn", "--host", *cmd] if in_flatpak() else cmd
 
@@ -56,6 +69,9 @@ def desktop_id(path: str) -> str:
     """'/usr/share/applications/kde/org.x.desktop' -> 'kde-org.x.desktop' (XDG desktop file ID)."""
     rel = path.split("/applications/", 1)[-1]
     return rel.replace("/", "-")
+
+
+app_id = desktop_id
 
 
 def list_phone_apps() -> list[tuple[str, str]]:

@@ -125,3 +125,46 @@ jobs:
           path: dist/*.flatpak
           archive: false
           if-no-files-found: error
+
+  windows:
+    name: Test and build (Windows)
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v7.1.0
+        id: python
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.3.2
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Install dependencies
+        run: uv sync --locked --python "${{ steps.python.outputs.python-path }}"
+
+      - name: Run tests
+        run: .venv\Scripts\python -m pytest -v
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Build
+        run: .\build-windows.ps1 -Python "${{ steps.python.outputs.python-path }}"
+
+      - name: Launch app
+        # A windowed PyInstaller app shows startup errors in a dialog and waits. Without a tray
+        # (offscreen), the app quits on its own once it is idle, so a hang means it failed.
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $app = Start-Process -FilePath "dist\Call Switcher\Call Switcher.exe" -ArgumentList "--background" -PassThru
+          if (-not $app.WaitForExit(60000)) { $app.Kill(); throw "Call Switcher did not quit (startup error?)" }
+          if ($app.ExitCode -ne 0) { throw "Call Switcher exited with $($app.ExitCode)" }
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CallSwitcher-windows
+          path: dist/*-setup.exe
+          archive: false
+          if-no-files-found: error

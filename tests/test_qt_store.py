@@ -3,18 +3,19 @@ import sys
 
 import pytest
 
-if sys.platform != "linux":
-    pytest.skip("Linux backend", allow_module_level=True)
+if sys.platform == "darwin":
+    pytest.skip("Linux and Windows backend", allow_module_level=True)
 
 import keyring.errors  # noqa: E402
 
 from call_switcher import settings  # noqa: E402
-from call_switcher.linux import store  # noqa: E402
+from call_switcher.qt import store  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def config_home(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("APPDATA", str(tmp_path))
     return tmp_path
 
 
@@ -31,7 +32,7 @@ def test_save_and_load(config_home):
     assert s["phonixEnabled"] is True
     assert s["ariPort"] == 8089
     assert settings.mode_label(settings.MODE_APP, s) == "Linphone"
-    data = json.loads((config_home / "call-switcher" / "settings.json").read_text())
+    data = json.loads(store._path().read_text())
     assert "unknown" not in data
 
 
@@ -44,7 +45,7 @@ def test_save_keeps_other_values():
 
 
 def test_broken_values_fall_back_to_defaults(config_home):
-    path = config_home / "call-switcher" / "settings.json"
+    path = store._path()
     path.parent.mkdir()
     path.write_text(json.dumps({"ariPort": "abc", "ariUser": None, "ariHTTPS": 1}))
     s = store.load()

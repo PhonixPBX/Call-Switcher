@@ -1,9 +1,10 @@
-"""Linux app: a tray icon (where the desktop has one) and a handler for tel:/callto:/sip: links.
+"""Linux and Windows app: a tray icon (where the desktop has one) and a handler for tel:/callto:/sip: links.
 
 `call-switcher URL` dials, `call-switcher` shows the settings, `call-switcher --background`
 (autostart) only shows the tray icon. Only one instance runs; later starts hand their URL to it.
 """
 import argparse
+import getpass
 import os
 import pathlib
 import stat
@@ -38,10 +39,12 @@ def _private_dir() -> str:
 
 
 def socket_path() -> str:
+    if sys.platform == "win32":
+        return f"{settings.BUNDLE_ID}-{getpass.getuser()}"  # a named pipe
     # XDG_RUNTIME_DIR is private to the user (0700), unlike /tmp.
     runtime = os.environ.get("XDG_RUNTIME_DIR") or _private_dir()
-    if host.in_flatpak():
-        # Shared by all instances of the Flatpak, unlike /tmp.
+    if os.path.exists("/.flatpak-info"):
+        # Shared by all instances of the Flatpak.
         return os.path.join(runtime, "app", settings.BUNDLE_ID, "instance.sock")
     return os.path.join(runtime, f"{settings.BUNDLE_ID}.sock")
 
