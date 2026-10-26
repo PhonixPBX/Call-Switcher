@@ -1,6 +1,5 @@
 import base64
 import json
-import os
 import re
 import ssl
 import urllib.error
@@ -8,8 +7,6 @@ import urllib.parse
 import urllib.request
 
 import truststore
-from AppKit import NSWorkspace, NSWorkspaceOpenConfiguration
-from Foundation import NSURL
 from .i18n import _
 
 SCHEMES = ("tel", "callto", "sip")
@@ -33,27 +30,10 @@ def extract_number(url: str) -> str:
     return re.sub(r"[^0-9+*#]", "", raw)
 
 
-def forward_to_app(url: str, app_path: str, on_error):
-    """Open the URL explicitly with the given app (no loop through the tel: default)."""
-    if not os.path.isdir(app_path):
-        raise DialError(_("Phone app not found: {path}", path=app_path))
-
-    def completion(app, error):
-        if error is not None:
-            on_error(str(error.localizedDescription()))
-
-    NSWorkspace.sharedWorkspace().openURLs_withApplicationAtURL_configuration_completionHandler_(
-        [NSURL.URLWithString_(url)],
-        NSURL.fileURLWithPath_(app_path),
-        NSWorkspaceOpenConfiguration.configuration(),
-        completion,
-    )
-
-
 def _ssl_context(insecure: bool) -> ssl.SSLContext:
     if insecure:
         return ssl._create_unverified_context()
-    # The bundled OpenSSL has no CA store; verify against the macOS keychain instead.
+    # The bundled OpenSSL has no CA store; verify against the system trust store instead.
     return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 

@@ -68,3 +68,60 @@ jobs:
           path: dist/*.dmg
           archive: false  # downloadable as the DMG itself, not zipped
           if-no-files-found: error
+
+  test-linux:
+    name: Test (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v7.1.0
+        id: python
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.3.2
+
+      - name: Install Qt system libraries
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+
+      - name: Install dependencies
+        run: uv sync --locked --python "${{ steps.python.outputs.python-path }}"
+
+      - name: Check Flatpak requirements match uv.lock
+        run: |
+          .venv/bin/python packaging/linux/requirements.py
+          git diff --exit-code packaging/linux/python3-requirements.json
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest -v
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  flatpak:
+    name: Flatpak
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder appstream desktop-file-utils
+          # Ubuntu 24.04 keeps bubblewrap from creating the build sandbox otherwise.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Check desktop file and metadata
+        run: |
+          desktop-file-validate packaging/linux/org.phonixpbx.callswitcher.desktop
+          appstreamcli validate --no-net packaging/linux/org.phonixpbx.callswitcher.metainfo.xml
+
+      - name: Build
+        run: ./build-linux.sh
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CallSwitcher-flatpak
+          path: dist/*.flatpak
+          archive: false
+          if-no-files-found: error

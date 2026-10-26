@@ -1,5 +1,3 @@
-import re
-
 from AppKit import (
     NSAlert,
     NSAlertFirstButtonReturn,
@@ -10,6 +8,7 @@ from AppKit import (
     NSPasteboardTypeString,
     NSTextField,
 )
+from .calls import clipboard_number
 from .i18n import _
 
 
@@ -30,9 +29,7 @@ def show_alert(title: str, text: str = ""):
 
 
 def _clipboard_number() -> str:
-    text = NSPasteboard.generalPasteboard().stringForType_(NSPasteboardTypeString) or ""
-    text = str(text).strip()
-    return text if re.fullmatch(r"[0-9+*#()/.\s-]{3,30}", text) else ""
+    return clipboard_number(str(NSPasteboard.generalPasteboard().stringForType_(NSPasteboardTypeString) or ""))
 
 
 def ask_number() -> str | None:

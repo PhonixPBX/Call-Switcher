@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Call Switcher
+Comment=Place calls from tel: links through PhonixPBX, Asterisk ARI or a phone app
+Comment[de]=Anrufe aus tel:-Links über PhonixPBX, Asterisk ARI oder eine Telefon-App
+Comment[fr]=Passer des appels depuis les liens tel: via PhonixPBX, Asterisk ARI ou une app de téléphone
+Comment[it]=Effettua chiamate dai link tel: tramite PhonixPBX, Asterisk ARI o un’app telefono
+Comment[es]=Llama desde enlaces tel: a través de PhonixPBX, Asterisk ARI o una app de teléfono
+Comment[pt]=Faça chamadas a partir de links tel: pelo PhonixPBX, Asterisk ARI ou um app de telefone
+Exec=call-switcher %u
+Icon=org.phonixpbx.callswitcher
+Terminal=false
+StartupNotify=false
+Categories=Network;Telephony;
+Keywords=phone;call;tel;sip;callto;asterisk;phonix;
+MimeType=x-scheme-handler/tel;x-scheme-handler/callto;x-scheme-handler/sip;

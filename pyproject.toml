@@ -1,26 +1,30 @@
 [project]
 name = "call-switcher"
 version = "0.1.0rc2"
-description = "macOS menu bar app that places tel: links through a phone app, PhonixPBX or Asterisk ARI"
+description = "Menu bar / tray app for macOS and Linux that places tel: links through a phone app, PhonixPBX or Asterisk ARI"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
-    "pyobjc-framework-Cocoa",
-    "pyobjc-framework-ServiceManagement",
     "truststore",
+    "pyobjc-framework-Cocoa; sys_platform == 'darwin'",
+    "pyobjc-framework-ServiceManagement; sys_platform == 'darwin'",
+    "PySide6-Essentials; sys_platform == 'linux'",
+    "keyring; sys_platform == 'linux'",
+    "jeepney; sys_platform == 'linux'",
 ]
 
 [dependency-groups]
 dev = ["pytest"]
-build = ["packaging", "py2app", "setuptools"]
+build = ["packaging", "py2app; sys_platform == 'darwin'", "setuptools"]
 
 [tool.uv]
 # An app, not a library: uv only installs the dependencies, not the project itself.
 package = false
 default-groups = ["dev", "build"]
 # py2app needs a framework build of Python (Homebrew or python.org), not uv's standalone builds.
+# On Linux the system Python is used as well (pass --python if it differs from .python-version).
 python-preference = "only-system"
 
 [tool.pytest.ini_options]

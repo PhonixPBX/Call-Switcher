@@ -2,6 +2,7 @@ import ast
 import pathlib
 import re
 import string
+import sys
 
 import pytest
 
@@ -13,7 +14,7 @@ PACKAGE = pathlib.Path(i18n.__file__).parent
 def _source_texts() -> set[str]:
     """Every literal passed to _() in the app's modules."""
     texts = set()
-    for path in PACKAGE.glob("*.py"):
+    for path in PACKAGE.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text())):
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_"
                     and node.args and isinstance(node.args[0], ast.Constant)):
@@ -57,7 +58,24 @@ def test_detect_language():
     assert i18n.detect_language() in i18n.LANGUAGES
 
 
+@pytest.mark.skipif(sys.platform == "darwin", reason="macOS uses NSLocale")
+@pytest.mark.parametrize("env, expected", [
+    ({"LANGUAGE": "ja:it:de", "LANG": "fr_CH.UTF-8"}, "it"),
+    ({"LC_ALL": "pt_BR.UTF-8", "LANG": "de_CH.UTF-8"}, "pt"),
+    ({"LC_MESSAGES": "es_ES.UTF-8", "LANG": "de_CH.UTF-8"}, "es"),
+    ({"LANG": "de_CH.UTF-8"}, "de"),
+    ({"LANG": "C.UTF-8"}, "en"),
+    ({}, "en"),
+])
+def test_detect_language_from_environment(monkeypatch, env, expected):
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        monkeypatch.delenv(var, raising=False)
+    for var, value in env.items():
+        monkeypatch.setenv(var, value)
+    assert i18n.detect_language() == expected
+
+
 def test_no_hardcoded_german_left():
-    for path in PACKAGE.glob("*.py"):
+    for path in PACKAGE.rglob("*.py"):
         if path.name != "i18n.py":
             assert not re.search(r'"[^"\n]*[äöüÄÖÜß][^"\n]*"', path.read_text()), path.name
