@@ -110,3 +110,14 @@ def test_save(dialog):
     s = settings.load()
     assert (s["appPath"], s["appName"], s["phonixEnabled"]) == (APPS[1][0], "Jami", True)
     assert settings.mode_label(settings.MODE_APP, s) == "Jami"
+
+
+def test_message_boxes_show_plain_text(qapp):
+    # Texts can come from a tel: link or a server and must not be read as HTML.
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QLabel, QMessageBox
+
+    box = ui._message_box(QMessageBox.Icon.Warning, "<b>title</b>", "<img src='http://x/'>text")
+    labels = {label.text(): label.textFormat() for label in box.findChildren(QLabel) if label.text()}
+    assert labels == {"<b>title</b>": Qt.TextFormat.PlainText,
+                      "<img src='http://x/'>text": Qt.TextFormat.PlainText}
