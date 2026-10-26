@@ -215,8 +215,8 @@ class SettingsDialog(QDialog):
         self.phonix_token.setText(settings.get_secret(settings.ACCOUNT_PHONIX))
         self.phonix_status.setText("")
 
-        self.login_item.setEnabled(host.in_flatpak())
-        self.login_item.setChecked(host.in_flatpak() and s.get("loginItem", False))
+        self.login_item.setEnabled(host.installed())
+        self.login_item.setChecked(host.installed() and s.get("loginItem", False))
         self._refresh_handler_label()
         self._refresh_tab_labels()
 
@@ -230,7 +230,7 @@ class SettingsDialog(QDialog):
         for app_path, app_name in self.apps:
             self.app.addItem(app_name, app_path)
         if path and self.app.findData(path) < 0:  # keep a chosen app that is no longer found
-            self.app.addItem(name or host.desktop_id(path), path)
+            self.app.addItem(name or host.app_id(path), path)
         self.app.setCurrentIndex(self.app.findData(path) if path else (0 if self.app.count() else -1))
 
     def _form_values(self) -> dict:
@@ -266,10 +266,10 @@ class SettingsDialog(QDialog):
         handler = host.default_handler()
         if not handler:
             name = _("no app")
-        elif handler == host.DESKTOP_ID:
+        elif handler == host.OWN_ID:
             name = "Call Switcher"
         else:
-            names = {host.desktop_id(path): app_name for path, app_name in self.apps}
+            names = {host.app_id(path): app_name for path, app_name in self.apps}
             name = names.get(handler, handler.removesuffix(".desktop"))
         self.handler_label.setText(_("opens with: {app}", app=name))
 
@@ -295,9 +295,8 @@ class SettingsDialog(QDialog):
         threading.Thread(target=run, daemon=True).start()
 
     def _make_default(self):
-        if not host.in_flatpak():
-            ui.show_alert(_("Only possible in the built app"),
-                          _("Install the Flatpak to make Call Switcher the default for tel: links."))
+        if not host.installed():
+            ui.show_alert(_("Only possible in the built app"), host.install_hint())
             return
         try:
             host.set_default()
@@ -306,7 +305,7 @@ class SettingsDialog(QDialog):
         self._refresh_handler_label()
 
     def _apply_login_item(self, enabled):
-        if not host.in_flatpak() or enabled == store.load()["loginItem"]:
+        if not host.installed() or enabled == store.load()["loginItem"]:
             return
 
         def run():

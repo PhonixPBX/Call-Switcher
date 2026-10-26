@@ -2,11 +2,12 @@
 
 # Call Switcher
 
-A menu bar app for macOS and a tray app for Linux that handles `tel:`, `callto:` and `sip:` links. It places the call
+A menu bar app for macOS and a tray app for Linux and Windows that handles `tel:`, `callto:` and `sip:` links. It places the call
 through a phone app (such as Telephone.app), the click-to-call API of
 [PhonixPBX](https://github.com/PhonixPBX/PhonixPBX), or Asterisk ARI (originate).
 
-Runs on macOS 26 and 27 (Apple Silicon) and on Linux as a Flatpak (see [Linux](#linux)). Available in English, German, French, Italian,
+Runs on macOS 26 and 27 (Apple Silicon), on Linux as a Flatpak (see [Linux](#linux)) and on
+Windows 10 and 11 (see [Windows](#windows)). Available in English, German, French, Italian,
 Spanish and Portuguese (Brazil). The app follows the language order in System Settings →
 General → Language & Region and falls back to English.
 
@@ -85,6 +86,27 @@ settings are in `~/.var/app/org.phonixpbx.callswitcher/config/call-switcher/sett
 The Flatpak may run commands on the host (`--talk-name=org.freedesktop.Flatpak`). It needs this
 to list and start the phone app and to set the default handler for `tel:` links with
 `xdg-mime`.
+
+## Windows
+
+1. Download `CallSwitcher-<version>-x64-setup.exe` from
+   [Releases](https://github.com/PhonixPBX/Call-Switcher/releases) and run it. It installs for
+   the current user, without admin rights.
+2. The installer is not signed, so Windows SmartScreen warns about it the first time. Click
+   **More info**, then **Run anyway**.
+3. Call Switcher starts with a phone icon in the notification area (it may be hidden behind
+   the arrow). Right-click it and choose **Settings…**; set up the methods as on macOS.
+4. Click **Set as Default**. Windows does not let apps make themselves the default, so this
+   opens Settings → Apps → Default apps → Call Switcher; choose Call Switcher there for `TEL`,
+   `CALLTO` and `SIP`.
+5. **Phone App** lists the installed apps that handle `sip:`, `tel:` or `callto:` links, such
+   as MicroSIP. Call Switcher starts the chosen app with the link.
+
+The ARI password and the Phonix token are stored in the Windows Credential Manager under
+`org.phonixpbx.callswitcher`, accounts `ari` and `phonix`. The other settings are in
+`%APPDATA%\Call Switcher\settings.json`. "Start at login" writes the `Call Switcher` value
+under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Uninstall Call Switcher under
+Settings → Apps.
 
 ## PhonixPBX
 
@@ -181,9 +203,30 @@ flatpak remote-delete --user flathub   # only if no other user Flatpaks come fro
 rm -rf .flatpak-builder build
 ```
 
-The macOS and the Linux app share the dialing and the settings logic (`dialer.py`, `calls.py`,
-`settings.py`, `i18n.py`). `macos.py` and the modules at the top level are macOS only,
-[call_switcher/linux/](call_switcher/linux/) is the Linux app.
+### Windows
+
+Requires Python (3.12 or newer, from python.org), [uv](https://docs.astral.sh/uv/) and
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
+
+```powershell
+uv sync --python <path to python.exe>
+uv run python -m call_switcher
+.\build-windows.ps1 -Python <path to python.exe>
+```
+
+The script builds `dist\Call Switcher\` with PyInstaller and the installer
+`dist\CallSwitcher-<version>-x64-setup.exe` with Inno Setup
+([packaging/windows/CallSwitcher.iss](packaging/windows/CallSwitcher.iss)). The installer
+registers the `CallSwitcher.URL` ProgID and the capabilities for `tel:`, `callto:` and `sip:`
+in `HKCU`. Regenerate the Windows icon with `uv run packaging/windows/make_ico.py`.
+
+### Code structure
+
+The macOS app and the Linux/Windows app share the dialing and the settings logic
+(`dialer.py`, `calls.py`, `settings.py`, `i18n.py`). `macos.py` and the modules at the top
+level are macOS only. [call_switcher/qt/](call_switcher/qt/) is the Qt app for Linux and
+Windows; only `host_linux.py` and `host_windows.py` differ between the two (phone apps,
+default handler, autostart).
 
 ### Tests
 
@@ -211,8 +254,10 @@ language; the tests fail if a translation is missing or its placeholders do not 
 
 - `.github/workflows/ci.yml` tests and builds on every push to `main` and on pull requests,
   on macOS 26 and macOS 27 (runner `xcode-27`, still a preview, so failures there do not
-  block) and on Linux. The DMG and the Flatpak are attached to the workflow run as artifacts.
-- `.github/workflows/release.yml` creates a GitHub release with the DMG and the Flatpak:
+  block), on Linux and on Windows. The DMG, the Flatpak and the Windows installer are attached
+  to the workflow run as artifacts.
+- `.github/workflows/release.yml` creates a GitHub release with the DMG, the Flatpak and the
+  Windows installer:
 
   ```sh
   # Bump the version in pyproject.toml and commit, then:

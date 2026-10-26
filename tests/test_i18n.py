@@ -58,7 +58,7 @@ def test_detect_language():
     assert i18n.detect_language() in i18n.LANGUAGES
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="macOS uses NSLocale")
+@pytest.mark.skipif(sys.platform != "linux", reason="macOS and Windows ask the system")
 @pytest.mark.parametrize("env, expected", [
     ({"LANGUAGE": "ja:it:de", "LANG": "fr_CH.UTF-8"}, "it"),
     ({"LC_ALL": "pt_BR.UTF-8", "LANG": "de_CH.UTF-8"}, "pt"),

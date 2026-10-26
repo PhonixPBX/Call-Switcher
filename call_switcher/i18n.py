@@ -18,12 +18,18 @@ def _preferred_languages() -> list[str]:
         if os.environ.get(var):
             preferred.append(os.environ[var])
             break
+    if sys.platform == "win32":
+        # Display language from Settings > Time & language (a LANGID such as 0x0807 -> 'de_CH').
+        import ctypes
+        import locale
+        language_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        preferred.append(locale.windows_locale.get(language_id, ""))
     return preferred
 
 
 def detect_language(preferred: list[str] | None = None) -> str:
-    """First supported language from System Settings > General > Language & Region (macOS)
-    or the locale environment (Linux)."""
+    """First supported language from System Settings > General > Language & Region (macOS),
+    the locale environment (Linux) or the Windows display language."""
     if preferred is None:
         preferred = _preferred_languages()
     for code in preferred:
@@ -146,6 +152,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "Could not start the phone app: {error}": "Telefon-App konnte nicht gestartet werden: {error}",
         "Install the Flatpak to make Call Switcher the default for tel: links.":
             "Installiere das Flatpak, um Call Switcher als Standard für tel:-Links zu setzen.",
+        "Install Call Switcher to make it the default for tel: links.":
+            "Installiere Call Switcher, um es als Standard für tel:-Links zu setzen.",
         "Start Call Switcher at login": "Call Switcher bei der Anmeldung starten",
         "Not allowed in the system settings.": "In den Systemeinstellungen nicht erlaubt.",
         "Could not save the credentials in the keyring":
@@ -243,6 +251,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "Could not start the phone app: {error}": "Impossible de lancer l’app de téléphone : {error}",
         "Install the Flatpak to make Call Switcher the default for tel: links.":
             "Installez le Flatpak pour définir Call Switcher par défaut pour les liens tel:.",
+        "Install Call Switcher to make it the default for tel: links.":
+            "Installez Call Switcher pour le définir par défaut pour les liens tel:.",
         "Start Call Switcher at login": "Lancer Call Switcher à l’ouverture de session",
         "Not allowed in the system settings.": "Non autorisé dans les paramètres du système.",
         "Could not save the credentials in the keyring":
@@ -339,6 +349,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "Could not start the phone app: {error}": "Impossibile avviare l’app telefono: {error}",
         "Install the Flatpak to make Call Switcher the default for tel: links.":
             "Installa il Flatpak per impostare Call Switcher come predefinito per i link tel:.",
+        "Install Call Switcher to make it the default for tel: links.":
+            "Installa Call Switcher per impostarlo come predefinito per i link tel:.",
         "Start Call Switcher at login": "Avvia Call Switcher all’accesso",
         "Not allowed in the system settings.": "Non consentito nelle impostazioni di sistema.",
         "Could not save the credentials in the keyring": "Impossibile salvare le credenziali nel portachiavi",
@@ -434,6 +446,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "Could not start the phone app: {error}": "No se ha podido abrir la app de teléfono: {error}",
         "Install the Flatpak to make Call Switcher the default for tel: links.":
             "Instala el Flatpak para definir Call Switcher como predeterminado para los enlaces tel:.",
+        "Install Call Switcher to make it the default for tel: links.":
+            "Instala Call Switcher para definirlo como predeterminado para los enlaces tel:.",
         "Start Call Switcher at login": "Abrir Call Switcher al iniciar sesión",
         "Not allowed in the system settings.": "No permitido en la configuración del sistema.",
         "Could not save the credentials in the keyring":
@@ -531,6 +545,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "Could not start the phone app: {error}": "Não foi possível abrir o app de telefone: {error}",
         "Install the Flatpak to make Call Switcher the default for tel: links.":
             "Instale o Flatpak para definir o Call Switcher como padrão para links tel:.",
+        "Install Call Switcher to make it the default for tel: links.":
+            "Instale o Call Switcher para defini-lo como padrão para links tel:.",
         "Start Call Switcher at login": "Abrir o Call Switcher ao iniciar sessão",
         "Not allowed in the system settings.": "Não permitido nas configurações do sistema.",
         "Could not save the credentials in the keyring": "Não foi possível salvar as credenciais no chaveiro",

@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from call_switcher.linux import host
+from call_switcher.qt import host_linux as host
 
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="Linux backend")
 

@@ -39,7 +39,7 @@ def _backend():
     if sys.platform == "darwin":
         from . import macos as backend
     else:
-        from .linux import store as backend
+        from .qt import store as backend
     return backend
 
 
