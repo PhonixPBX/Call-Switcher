@@ -4,9 +4,9 @@
 (autostart) only shows the tray icon. Only one instance runs; later starts hand their URL to it.
 """
 import argparse
-import getpass
 import os
 import pathlib
+import secrets
 import stat
 import sys
 import tempfile
@@ -38,9 +38,22 @@ def _private_dir() -> str:
     return path
 
 
+def pipe_name(directory: pathlib.Path) -> str:
+    """Windows: named pipes are visible to all users of the machine, so their name is not
+    guessable: it ends in a random token kept in the user's profile, which others cannot read."""
+    path = directory / "instance-token"
+    directory.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(path, "x") as f:  # exclusive, so two first starts agree on one token
+            f.write(secrets.token_hex(16))
+    except FileExistsError:
+        pass
+    return f"{settings.BUNDLE_ID}-{path.read_text().strip()}"
+
+
 def socket_path() -> str:
     if sys.platform == "win32":
-        return f"{settings.BUNDLE_ID}-{getpass.getuser()}"  # a named pipe
+        return pipe_name(pathlib.Path(os.environ["LOCALAPPDATA"]) / "Call Switcher")
     # XDG_RUNTIME_DIR is private to the user (0700), unlike /tmp.
     runtime = os.environ.get("XDG_RUNTIME_DIR") or _private_dir()
     if os.path.exists("/.flatpak-info"):
@@ -71,7 +84,9 @@ class App:
         self.server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self.server.newConnection.connect(self._accept)
         QLocalServer.removeServer(socket_path())  # left over from a crash; no other instance answered
-        self.server.listen(socket_path())
+        if not self.server.listen(socket_path()):
+            ui.show_alert(_("Could not start Call Switcher"), self.server.errorString())
+            raise SystemExit(1)
 
         # Dialogs come and go while a call is placed in the background, so closing the last
         # window must not quit. Without a tray icon the app quits once it is idle instead.

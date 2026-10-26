@@ -121,3 +121,12 @@ def test_message_boxes_show_plain_text(qapp):
     labels = {label.text(): label.textFormat() for label in box.findChildren(QLabel) if label.text()}
     assert labels == {"<b>title</b>": Qt.TextFormat.PlainText,
                       "<img src='http://x/'>text": Qt.TextFormat.PlainText}
+
+
+def test_pipe_name_is_random_and_kept(tmp_path):
+    from call_switcher.qt import app
+
+    name = app.pipe_name(tmp_path / "Call Switcher")
+    assert name.startswith("org.phonixpbx.callswitcher-") and len(name) == len("org.phonixpbx.callswitcher-") + 32
+    assert app.pipe_name(tmp_path / "Call Switcher") == name
+    assert app.pipe_name(tmp_path / "other") != name

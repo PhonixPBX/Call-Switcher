@@ -154,6 +154,7 @@ CATALOG: dict[str, dict[str, str]] = {
             "Installiere das Flatpak, um Call Switcher als Standard für tel:-Links zu setzen.",
         "Install Call Switcher to make it the default for tel: links.":
             "Installiere Call Switcher, um es als Standard für tel:-Links zu setzen.",
+        "Could not start Call Switcher": "Call Switcher konnte nicht gestartet werden",
         "Start Call Switcher at login": "Call Switcher bei der Anmeldung starten",
         "Not allowed in the system settings.": "In den Systemeinstellungen nicht erlaubt.",
         "Could not save the credentials in the keyring":
@@ -253,6 +254,7 @@ CATALOG: dict[str, dict[str, str]] = {
             "Installez le Flatpak pour définir Call Switcher par défaut pour les liens tel:.",
         "Install Call Switcher to make it the default for tel: links.":
             "Installez Call Switcher pour le définir par défaut pour les liens tel:.",
+        "Could not start Call Switcher": "Impossible de démarrer Call Switcher",
         "Start Call Switcher at login": "Lancer Call Switcher à l’ouverture de session",
         "Not allowed in the system settings.": "Non autorisé dans les paramètres du système.",
         "Could not save the credentials in the keyring":
@@ -351,6 +353,7 @@ CATALOG: dict[str, dict[str, str]] = {
             "Installa il Flatpak per impostare Call Switcher come predefinito per i link tel:.",
         "Install Call Switcher to make it the default for tel: links.":
             "Installa Call Switcher per impostarlo come predefinito per i link tel:.",
+        "Could not start Call Switcher": "Impossibile avviare Call Switcher",
         "Start Call Switcher at login": "Avvia Call Switcher all’accesso",
         "Not allowed in the system settings.": "Non consentito nelle impostazioni di sistema.",
         "Could not save the credentials in the keyring": "Impossibile salvare le credenziali nel portachiavi",
@@ -448,6 +451,7 @@ CATALOG: dict[str, dict[str, str]] = {
             "Instala el Flatpak para definir Call Switcher como predeterminado para los enlaces tel:.",
         "Install Call Switcher to make it the default for tel: links.":
             "Instala Call Switcher para definirlo como predeterminado para los enlaces tel:.",
+        "Could not start Call Switcher": "No se ha podido iniciar Call Switcher",
         "Start Call Switcher at login": "Abrir Call Switcher al iniciar sesión",
         "Not allowed in the system settings.": "No permitido en la configuración del sistema.",
         "Could not save the credentials in the keyring":
@@ -547,6 +551,7 @@ CATALOG: dict[str, dict[str, str]] = {
             "Instale o Flatpak para definir o Call Switcher como padrão para links tel:.",
         "Install Call Switcher to make it the default for tel: links.":
             "Instale o Call Switcher para defini-lo como padrão para links tel:.",
+        "Could not start Call Switcher": "Não foi possível iniciar o Call Switcher",
         "Start Call Switcher at login": "Abrir o Call Switcher ao iniciar sessão",
         "Not allowed in the system settings.": "Não permitido nas configurações do sistema.",
         "Could not save the credentials in the keyring": "Não foi possível salvar as credenciais no chaveiro",
