@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
 
@@ -27,9 +27,17 @@ def call_after(fn, *args):
     _invoker.called.emit(lambda: fn(*args))
 
 
-def show_alert(title: str, text: str = ""):
-    box = QMessageBox(QMessageBox.Icon.Warning, "Call Switcher", title)
+def _message_box(icon, title: str, text: str) -> QMessageBox:
+    # The texts can come from a tel: link or a server, so they must not be read as HTML.
+    box = QMessageBox(icon, "Call Switcher", "")
+    box.setTextFormat(Qt.TextFormat.PlainText)
+    box.setText(title)
     box.setInformativeText(text)
+    return box
+
+
+def show_alert(title: str, text: str = ""):
+    box = _message_box(QMessageBox.Icon.Warning, title, text)
     box.exec()
 
 
@@ -48,8 +56,7 @@ def ask_number() -> str | None:
 
 def choose_method(number: str, choices: list[tuple[str, str]]) -> str | None:
     """Ask which method to call with; `choices` are (mode, label). Returns the mode or None."""
-    box = QMessageBox(QMessageBox.Icon.Question, "Call Switcher", _("Call {number}", number=number))
-    box.setInformativeText(_("How do you want to call?"))
+    box = _message_box(QMessageBox.Icon.Question, _("Call {number}", number=number), _("How do you want to call?"))
     buttons = {box.addButton(label, QMessageBox.ButtonRole.AcceptRole): mode for mode, label in choices}
     box.setEscapeButton(box.addButton(_("Cancel"), QMessageBox.ButtonRole.RejectRole))
     box.exec()
