@@ -2,11 +2,11 @@
 
 # Call Switcher
 
-A macOS menu bar app that handles `tel:`, `callto:` and `sip:` links. It places the call
+A menu bar app for macOS and a tray app for Linux that handles `tel:`, `callto:` and `sip:` links. It places the call
 through a phone app (such as Telephone.app), the click-to-call API of
 [PhonixPBX](https://github.com/PhonixPBX/PhonixPBX), or Asterisk ARI (originate).
 
-Runs on macOS 26 and 27 (Apple Silicon). Available in English, German, French, Italian,
+Runs on macOS 26 and 27 (Apple Silicon) and on Linux as a Flatpak (see [Linux](#linux)). Available in English, German, French, Italian,
 Spanish and Portuguese (Brazil). The app follows the language order in System Settings →
 General → Language & Region and falls back to English.
 
@@ -56,6 +56,36 @@ xattr -dr com.apple.quarantine "/Applications/Call Switcher.app"
 If macOS already refuses to open the DMG, do the same for the DMG, for example
 `xattr -d com.apple.quarantine ~/Downloads/CallSwitcher-*.dmg`.
 
+## Linux
+
+1. Download `CallSwitcher-<version>-x86_64.flatpak` from
+   [Releases](https://github.com/PhonixPBX/Call-Switcher/releases) and install it:
+
+   ```sh
+   flatpak install --user CallSwitcher-*.flatpak
+   ```
+
+   The KDE runtime and PySide6 come from Flathub; add it first if needed:
+   `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo`.
+2. Open "Call Switcher" from the app menu. The settings window opens; set up the methods as
+   on macOS and click **Set as Default** so that `tel:` links open in Call Switcher.
+3. **Phone App** lists the installed apps that handle `sip:`, `tel:` or `callto:` links, such
+   as Linphone. Call Switcher starts the chosen app with the link.
+
+The tray icon works on KDE Plasma, Xfce, Cinnamon and other desktops with StatusNotifierItem
+support. GNOME needs the
+[AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/);
+without it there is no tray icon, but `tel:` links still work and starting the app from the
+app menu opens the settings.
+
+The ARI password and the Phonix token are stored in the Secret Service (GNOME keyring or
+KWallet) under service `org.phonixpbx.callswitcher`, accounts `ari` and `phonix`. The other
+settings are in `~/.var/app/org.phonixpbx.callswitcher/config/call-switcher/settings.json`.
+
+The Flatpak may run commands on the host (`--talk-name=org.freedesktop.Flatpak`). It needs this
+to list and start the phone app and to set the default handler for `tel:` links with
+`xdg-mime`.
+
 ## PhonixPBX
 
 Call Switcher uses `POST /api/v1/calls`: your phone rings first, and once you answer,
@@ -78,6 +108,8 @@ endpoint rings first; once answered, Asterisk dials the number in the given cont
 
 Requires [uv](https://docs.astral.sh/uv/) (`brew install uv`).
 
+### macOS
+
 ```sh
 ./build.sh
 ```
@@ -91,12 +123,76 @@ yet: py2app 0.28 misses new standard library modules and the app fails to launch
 
 Dependabot keeps the Python packages and GitHub Actions up to date.
 
-Tests:
+### Linux
+
+The Linux app uses Qt (PySide6) and runs on the system Python (3.12 or newer); pass it to
+uv if it differs from `.python-version`:
+
+```sh
+uv sync --python /usr/bin/python3
+uv run python -m call_switcher
+```
+
+```sh
+./build-linux.sh
+```
+
+The script builds the Flatpak with `flatpak-builder` (or the `org.flatpak.Builder` Flatpak)
+and packs it as `dist/CallSwitcher-<version>-<arch>.flatpak`. The manifest and the desktop
+integration are in [packaging/linux/](packaging/linux/). The Python packages for the Flatpak
+(`python3-requirements.json`) are taken from `uv.lock`; after changing dependencies, run
+`uv run packaging/linux/requirements.py` (CI checks that the file is up to date).
+
+#### Build setup
+
+The build needs Flathub as a **user** remote. `build-linux.sh` installs everything per user
+(`--user`), so no root is needed. A system-wide Flathub remote is not used for this.
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+# Only if flatpak-builder is not installed from the distribution:
+flatpak install --user flathub org.flatpak.Builder
+./build-linux.sh
+```
+
+On the first run, flatpak-builder (`--install-deps-from=flathub`) installs from Flathub what the
+manifest names: `org.kde.Sdk//6.11`, `org.kde.Platform//6.11` and `io.qt.PySide.BaseApp//6.11`.
+It also installs their dependencies: the Locale extensions, `org.kde.KStyle.Adwaita` and the
+GL, VAAPI and codec extensions of the freedesktop runtime. `org.flatpak.Builder` also brings
+`org.freedesktop.Sdk`. Together this takes roughly 10 GB, mostly the two SDKs; later builds
+reuse it. Build state is kept in `.flatpak-builder/` and `build/`.
+
+To test the bundle locally:
+
+```sh
+flatpak install --user --reinstall dist/CallSwitcher-*.flatpak
+```
+
+Installing it registers Call Switcher for `tel:`, `callto:` and `sip:`. If `mimeapps.list` has no
+explicit default for these, the desktop may now open such links with Call Switcher. Set
+another app back with, for example, `xdg-mime default linphone.desktop x-scheme-handler/tel`.
+
+To remove the build setup again:
+
+```sh
+flatpak uninstall --user org.phonixpbx.callswitcher org.flatpak.Builder io.qt.PySide.BaseApp org.kde.Sdk
+flatpak uninstall --user --unused   # runtimes and extensions nothing else needs
+flatpak remote-delete --user flathub   # only if no other user Flatpaks come from it
+rm -rf .flatpak-builder build
+```
+
+The macOS and the Linux app share the dialing and the settings logic (`dialer.py`, `calls.py`,
+`settings.py`, `i18n.py`). `macos.py` and the modules at the top level are macOS only,
+[call_switcher/linux/](call_switcher/linux/) is the Linux app.
+
+### Tests
 
 ```sh
 uv sync
 uv run pytest
 ```
+
+Tests of the other platform's user interface are skipped.
 
 Regenerate the icon with `uv run assets/make_icon.py`.
 
@@ -104,9 +200,9 @@ All configuration lives in `pyproject.toml`: version, dependencies (`uv.lock` pi
 pytest and the py2app options including the app's `Info.plist` (`[tool.py2app]`). `setup.py`
 only hands those options to py2app, which has no `pyproject.toml` support of its own.
 
-To run without building the bundle: `uv run python -m call_switcher`. In this mode
-`tel:` links do not reach the app, and "Start at login" and "Set as Default" are disabled.
-Dialing from the menu still works.
+To run without building the bundle or the Flatpak: `uv run python -m call_switcher`. In
+this mode `tel:` links do not reach the app, and "Start at login" and "Set as Default" are
+disabled. Dialing from the menu still works.
 
 Translations live in [call_switcher/i18n.py](call_switcher/i18n.py). English is the source
 language; the tests fail if a translation is missing or its placeholders do not match.
@@ -115,8 +211,8 @@ language; the tests fail if a translation is missing or its placeholders do not 
 
 - `.github/workflows/ci.yml` tests and builds on every push to `main` and on pull requests,
   on macOS 26 and macOS 27 (runner `xcode-27`, still a preview, so failures there do not
-  block). The DMG is attached to the workflow run as an artifact.
-- `.github/workflows/release.yml` creates a GitHub release with the DMG:
+  block) and on Linux. The DMG and the Flatpak are attached to the workflow run as artifacts.
+- `.github/workflows/release.yml` creates a GitHub release with the DMG and the Flatpak:
 
   ```sh
   # Bump the version in pyproject.toml and commit, then:

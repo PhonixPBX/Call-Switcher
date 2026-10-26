@@ -1,0 +1,62 @@
+# Flatpak of Call Switcher for Linux; build with ./build-linux.sh.
+id: org.phonixpbx.callswitcher
+runtime: org.kde.Platform
+runtime-version: "6.11"
+sdk: org.kde.Sdk
+base: io.qt.PySide.BaseApp
+base-version: "6.11"
+command: call-switcher
+build-options:
+  env:
+    # Read by cleanup-BaseApp.sh: the app needs neither Qt WebEngine nor numpy.
+    BASEAPP_REMOVE_WEBENGINE: "1"
+    BASEAPP_DISABLE_NUMPY: "1"
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+cleanup:
+  # Only needed to generate bindings, or not used by the app.
+  - /cleanup-BaseApp.sh
+  - /lib/libclang-cpp.so*
+  - /lib/libLLVM.so*
+  - /lib/python*/site-packages/shiboken6_generator
+  - /lib/python*/site-packages/OpenGL
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Tray icon (StatusNotifierItem)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # ARI password and API token (Secret Service: GNOME keyring, KWallet)
+  - --talk-name=org.freedesktop.secrets
+  # Listing and starting the phone app and setting the default handler for tel: links happen on
+  # the host (flatpak-spawn --host), see call_switcher/linux/host.py.
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  # Generated from uv.lock by requirements.py.
+  - python3-requirements.json
+
+  - name: call-switcher
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ${FLATPAK_DEST}/lib/call-switcher
+      - cp -r call_switcher ${FLATPAK_DEST}/lib/call-switcher/
+      - install -Dm755 call-switcher -t ${FLATPAK_DEST}/bin
+      - install -Dm644 ${FLATPAK_ID}.desktop -t ${FLATPAK_DEST}/share/applications
+      - install -Dm644 ${FLATPAK_ID}.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo
+      - install -Dm644 ${FLATPAK_ID}.png -t ${FLATPAK_DEST}/share/icons/hicolor/256x256/apps
+    sources:
+      - type: dir
+        path: ../../call_switcher
+        dest: call_switcher
+        skip:
+          - __pycache__
+      - type: file
+        path: call-switcher
+      - type: file
+        path: org.phonixpbx.callswitcher.desktop
+      - type: file
+        path: org.phonixpbx.callswitcher.metainfo.xml
+      - type: file
+        path: org.phonixpbx.callswitcher.png

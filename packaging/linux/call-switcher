@@ -1,0 +1,4 @@
+#!/bin/sh
+# Entry point inside the Flatpak.
+export PYTHONPATH="/app/lib/call-switcher${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m call_switcher "$@"

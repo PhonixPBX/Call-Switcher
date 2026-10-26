@@ -1,16 +1,31 @@
-"""Translations. English is the source language; the others follow the macOS language order.
+"""Translations. English is the source language; the others follow the system language order.
 
 Terms that refer to PhonixPBX options use Phonix's own translations, so users find them there.
 """
-from Foundation import NSLocale
+import os
+import sys
 
 LANGUAGES = ("en", "de", "fr", "it", "es", "pt")
 
 
+def _preferred_languages() -> list[str]:
+    if sys.platform == "darwin":
+        from Foundation import NSLocale
+        return list(NSLocale.preferredLanguages() or [])
+    # gettext order: LANGUAGE is a list, then the first of LC_ALL, LC_MESSAGES, LANG that is set.
+    preferred = [code for code in os.environ.get("LANGUAGE", "").split(":") if code]
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        if os.environ.get(var):
+            preferred.append(os.environ[var])
+            break
+    return preferred
+
+
 def detect_language(preferred: list[str] | None = None) -> str:
-    """First supported language from System Settings > General > Language & Region."""
+    """First supported language from System Settings > General > Language & Region (macOS)
+    or the locale environment (Linux)."""
     if preferred is None:
-        preferred = list(NSLocale.preferredLanguages() or [])
+        preferred = _preferred_languages()
     for code in preferred:
         base = str(code).split("-")[0].split("_")[0].lower()
         if base in LANGUAGES:
@@ -125,6 +140,16 @@ CATALOG: dict[str, dict[str, str]] = {
         "Please enter the extension of your own phone.": "Bitte die Nebenstelle des eigenen Telefons eintragen.",
         "Could not save the credentials in the keychain":
             "Zugangsdaten konnten nicht im Schlüsselbund gespeichert werden",
+        # Linux
+        "No phone app found": "Keine Telefon-App gefunden",
+        "Please choose a phone app.": "Bitte eine Telefon-App auswählen.",
+        "Could not start the phone app: {error}": "Telefon-App konnte nicht gestartet werden: {error}",
+        "Install the Flatpak to make Call Switcher the default for tel: links.":
+            "Installiere das Flatpak, um Call Switcher als Standard für tel:-Links zu setzen.",
+        "Start Call Switcher at login": "Call Switcher bei der Anmeldung starten",
+        "Not allowed in the system settings.": "In den Systemeinstellungen nicht erlaubt.",
+        "Could not save the credentials in the keyring":
+            "Zugangsdaten konnten nicht im Schlüsselbund gespeichert werden",
     },
     "fr": {
         "Dial Number…": "Composer un numéro…",
@@ -212,6 +237,16 @@ CATALOG: dict[str, dict[str, str]] = {
         "Please enter the extension of your own phone.": "Veuillez saisir le poste de votre téléphone.",
         "Could not save the credentials in the keychain":
             "Impossible d’enregistrer les identifiants dans le trousseau",
+        # Linux
+        "No phone app found": "Aucune app de téléphone trouvée",
+        "Please choose a phone app.": "Veuillez choisir une app de téléphone.",
+        "Could not start the phone app: {error}": "Impossible de lancer l’app de téléphone : {error}",
+        "Install the Flatpak to make Call Switcher the default for tel: links.":
+            "Installez le Flatpak pour définir Call Switcher par défaut pour les liens tel:.",
+        "Start Call Switcher at login": "Lancer Call Switcher à l’ouverture de session",
+        "Not allowed in the system settings.": "Non autorisé dans les paramètres du système.",
+        "Could not save the credentials in the keyring":
+            "Impossible d’enregistrer les identifiants dans le trousseau",
     },
     "it": {
         "Dial Number…": "Componi numero…",
@@ -298,6 +333,15 @@ CATALOG: dict[str, dict[str, str]] = {
         "Please enter the extension of your own phone.": "Inserisci l’interno del tuo telefono.",
         "Could not save the credentials in the keychain":
             "Impossibile salvare le credenziali nel portachiavi",
+        # Linux
+        "No phone app found": "Nessuna app telefono trovata",
+        "Please choose a phone app.": "Scegli un’app telefono.",
+        "Could not start the phone app: {error}": "Impossibile avviare l’app telefono: {error}",
+        "Install the Flatpak to make Call Switcher the default for tel: links.":
+            "Installa il Flatpak per impostare Call Switcher come predefinito per i link tel:.",
+        "Start Call Switcher at login": "Avvia Call Switcher all’accesso",
+        "Not allowed in the system settings.": "Non consentito nelle impostazioni di sistema.",
+        "Could not save the credentials in the keyring": "Impossibile salvare le credenziali nel portachiavi",
     },
     "es": {
         "Dial Number…": "Marcar número…",
@@ -383,6 +427,16 @@ CATALOG: dict[str, dict[str, str]] = {
         "No extension entered": "No se ha indicado ninguna extensión",
         "Please enter the extension of your own phone.": "Introduce la extensión de tu teléfono.",
         "Could not save the credentials in the keychain":
+            "No se han podido guardar las credenciales en el llavero",
+        # Linux
+        "No phone app found": "No se ha encontrado ninguna app de teléfono",
+        "Please choose a phone app.": "Elige una app de teléfono.",
+        "Could not start the phone app: {error}": "No se ha podido abrir la app de teléfono: {error}",
+        "Install the Flatpak to make Call Switcher the default for tel: links.":
+            "Instala el Flatpak para definir Call Switcher como predeterminado para los enlaces tel:.",
+        "Start Call Switcher at login": "Abrir Call Switcher al iniciar sesión",
+        "Not allowed in the system settings.": "No permitido en la configuración del sistema.",
+        "Could not save the credentials in the keyring":
             "No se han podido guardar las credenciales en el llavero",
     },
     "pt": {
@@ -471,5 +525,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "Please enter the extension of your own phone.": "Informe o ramal do seu telefone.",
         "Could not save the credentials in the keychain":
             "Não foi possível salvar as credenciais nas Chaves",
+        # Linux
+        "No phone app found": "Nenhum app de telefone encontrado",
+        "Please choose a phone app.": "Escolha um app de telefone.",
+        "Could not start the phone app: {error}": "Não foi possível abrir o app de telefone: {error}",
+        "Install the Flatpak to make Call Switcher the default for tel: links.":
+            "Instale o Flatpak para definir o Call Switcher como padrão para links tel:.",
+        "Start Call Switcher at login": "Abrir o Call Switcher ao iniciar sessão",
+        "Not allowed in the system settings.": "Não permitido nas configurações do sistema.",
+        "Could not save the credentials in the keyring": "Não foi possível salvar as credenciais no chaveiro",
     },
 }

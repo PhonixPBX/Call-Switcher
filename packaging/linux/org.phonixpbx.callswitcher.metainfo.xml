@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.phonixpbx.callswitcher</id>
+  <name>Call Switcher</name>
+  <summary>Place calls from tel: links through PhonixPBX, Asterisk ARI or a phone app</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <developer id="org.phonixpbx">
+    <name>The Call Switcher contributors</name>
+  </developer>
+  <description>
+    <p>
+      Call Switcher handles tel:, callto: and sip: links. It places the call through the
+      click-to-call API of PhonixPBX, Asterisk ARI (originate) or a phone app such as Linphone.
+    </p>
+    <p>
+      With PhonixPBX or Asterisk your own desk phone rings first; once you answer, the number
+      is dialed. If more than one method is enabled, Call Switcher asks which one to use.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.phonixpbx.callswitcher.desktop</launchable>
+  <url type="homepage">https://github.com/PhonixPBX/Call-Switcher</url>
+  <url type="bugtracker">https://github.com/PhonixPBX/Call-Switcher/issues</url>
+  <categories>
+    <category>Network</category>
+    <category>Telephony</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <mediatype>x-scheme-handler/tel</mediatype>
+    <mediatype>x-scheme-handler/callto</mediatype>
+    <mediatype>x-scheme-handler/sip</mediatype>
+  </provides>
+</component>

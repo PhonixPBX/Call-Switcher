@@ -1,8 +1,11 @@
 import pytest
-from AppKit import NSApplication
 
-from call_switcher import i18n, settings
-from call_switcher.settings_window import SettingsWindowController
+pytest.importorskip("AppKit")
+
+from AppKit import NSApplication  # noqa: E402
+
+from call_switcher import i18n, settings  # noqa: E402
+from call_switcher.settings_window import SettingsWindowController  # noqa: E402
 
 MARGIN = 20
 

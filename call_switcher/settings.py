@@ -1,7 +1,6 @@
 import os
-import subprocess
+import sys
 
-from Foundation import NSUserDefaults
 from .i18n import _
 
 BUNDLE_ID = "org.phonixpbx.callswitcher"
@@ -21,6 +20,8 @@ DEFAULTS = {
     "phonixEnabled": False,
     "ariEnabled": False,
     "appPath": "/Applications/Telephone.app",
+    # Display name of the phone app; only set on Linux, where appPath is a .desktop file.
+    "appName": "",
     "ariHost": "192.168.1.100",
     "ariPort": 8088,
     "ariHTTPS": False,
@@ -34,31 +35,45 @@ DEFAULTS = {
 }
 
 
-def _defaults():
-    d = NSUserDefaults.standardUserDefaults()
-    d.registerDefaults_(DEFAULTS)
-    return d
+def _backend():
+    if sys.platform == "darwin":
+        from . import macos as backend
+    else:
+        from .linux import store as backend
+    return backend
 
 
-def load() -> dict:
-    d = _defaults()
+def normalize(raw: dict) -> dict:
+    """Stored values (any type, None if missing) -> the types of DEFAULTS."""
     s = {}
     for key, default in DEFAULTS.items():
-        value = d.objectForKey_(key)
+        value = raw.get(key, default)
         if isinstance(default, bool):
             s[key] = bool(value)
         elif isinstance(default, int):
-            s[key] = int(value)
+            try:
+                s[key] = int(value)
+            except (TypeError, ValueError):
+                s[key] = default
         else:
             s[key] = str(value or "")
     return s
 
 
+def load() -> dict:
+    return _backend().load()
+
+
 def save(values: dict):
-    d = _defaults()
-    for key, value in values.items():
-        if key in DEFAULTS:
-            d.setObject_forKey_(value, key)
+    _backend().save(values)
+
+
+def get_secret(account: str) -> str:
+    return _backend().get_secret(account)
+
+
+def set_secret(account: str, secret: str):
+    _backend().set_secret(account, secret)
 
 
 def enabled_modes(s: dict) -> list[str]:
@@ -67,30 +82,5 @@ def enabled_modes(s: dict) -> list[str]:
 
 def mode_label(mode: str, s: dict) -> str:
     if mode == MODE_APP:
-        return os.path.splitext(os.path.basename(s["appPath"]))[0] or _("Phone App")
+        return s.get("appName") or os.path.splitext(os.path.basename(s["appPath"]))[0] or _("Phone App")
     return {MODE_PHONIX: "PhonixPBX", MODE_ARI: "Asterisk ARI"}[mode]
-
-
-def get_secret(account: str) -> str:
-    result = subprocess.run(
-        ["/usr/bin/security", "find-generic-password",
-         "-s", BUNDLE_ID, "-a", account, "-w"],
-        capture_output=True, text=True,
-    )
-    return result.stdout.rstrip("\n") if result.returncode == 0 else ""
-
-
-def set_secret(account: str, secret: str):
-    if not secret:
-        subprocess.run(
-            ["/usr/bin/security", "delete-generic-password",
-             "-s", BUNDLE_ID, "-a", account],
-            capture_output=True,
-        )
-        return
-    subprocess.run(
-        ["/usr/bin/security", "add-generic-password", "-U",
-         "-s", BUNDLE_ID, "-a", account, "-l", f"Call Switcher {account}",
-         "-w", secret],
-        capture_output=True, check=True,
-    )
