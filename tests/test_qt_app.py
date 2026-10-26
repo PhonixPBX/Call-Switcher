@@ -52,3 +52,28 @@ def test_pipe_server_of_current_user(qapp, tmp_path):
         sock.abort()
     finally:
         server.close()
+
+
+@pytest.mark.parametrize("found, renew", [("foreign", True), ("none", False)])
+def test_foreign_pipe_starts_under_new_name(qapp, monkeypatch, found, renew):
+    def send(message):
+        if found == "foreign":
+            raise app.ForeignServer()
+        return False
+
+    started = []
+
+    class FakeApp:
+        def __init__(self, qapp, renew=False):
+            started.append(renew)
+
+        def handle(self, message):
+            pass
+
+    monkeypatch.setattr(app, "send_to_running", send)
+    monkeypatch.setattr(app, "App", FakeApp)
+    monkeypatch.setattr(app, "QApplication", lambda argv: qapp)
+    monkeypatch.setattr(qapp, "exec", lambda: 0)
+    with pytest.raises(SystemExit):
+        app.main(["--background"])
+    assert started == [renew]

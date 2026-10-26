@@ -65,6 +65,10 @@ def socket_path(renew: bool = False) -> str:
     return os.path.join(runtime, f"{settings.BUNDLE_ID}.sock")
 
 
+class ForeignServer(Exception):
+    """The instance pipe is served by another user's process (Windows)."""
+
+
 def send_to_running(message: str) -> bool:
     """Hand the message to an instance that is already running. False if there is none."""
     sock = QLocalSocket()
@@ -75,7 +79,7 @@ def send_to_running(message: str) -> bool:
         from .host_windows import pipe_server_is_current_user
         if not pipe_server_is_current_user(int(sock.socketDescriptor())):
             sock.abort()
-            return False  # the app then listens under a new name
+            raise ForeignServer()
     sock.write(f"{message}\n".encode())
     sock.waitForBytesWritten(1000)
     sock.disconnectFromServer()
@@ -83,7 +87,7 @@ def send_to_running(message: str) -> bool:
 
 
 class App:
-    def __init__(self, qapp: QApplication):
+    def __init__(self, qapp: QApplication, renew: bool = False):
         self.qapp = qapp
         self.last_call = None
         self.settings_dialog = None
@@ -91,8 +95,11 @@ class App:
         self.server = QLocalServer()
         self.server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self.server.newConnection.connect(self._accept)
-        QLocalServer.removeServer(socket_path())  # left over from a crash; no other instance answered
-        listening = self.server.listen(socket_path())
+        # Qt does not ask Windows for the first instance of a pipe, so listening can work on a
+        # name another user created; `renew` (set when a client found such a pipe) avoids it.
+        name = socket_path(renew=renew)
+        QLocalServer.removeServer(name)  # left over from a crash; no other instance answered
+        listening = self.server.listen(name)
         if not listening and sys.platform == "win32":
             listening = self.server.listen(socket_path(renew=True))  # someone else took the name
         if not listening:
@@ -169,10 +176,14 @@ def main(argv: list[str] | None = None):
     qapp.setWindowIcon(QIcon.fromTheme(settings.BUNDLE_ID, QIcon(str(ICON))))
 
     message = DIAL + args.url if args.url else None if args.background else SHOW_SETTINGS
-    if send_to_running(message or ""):
-        return
+    try:
+        if send_to_running(message or ""):
+            return
+        foreign = False
+    except ForeignServer:
+        foreign = True
 
-    app = App(qapp)
+    app = App(qapp, renew=foreign)
     if message:
         QTimer.singleShot(0, lambda: app.handle(message))
     sys.exit(qapp.exec())
