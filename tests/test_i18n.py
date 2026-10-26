@@ -15,7 +15,7 @@ def _source_texts() -> set[str]:
     """Every literal passed to _() in the app's modules."""
     texts = set()
     for path in PACKAGE.rglob("*.py"):
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_"
                     and node.args and isinstance(node.args[0], ast.Constant)):
                 texts.add(node.args[0].value)
@@ -78,4 +78,4 @@ def test_detect_language_from_environment(monkeypatch, env, expected):
 def test_no_hardcoded_german_left():
     for path in PACKAGE.rglob("*.py"):
         if path.name != "i18n.py":
-            assert not re.search(r'"[^"\n]*[äöüÄÖÜß][^"\n]*"', path.read_text()), path.name
+            assert not re.search(r'"[^"\n]*[äöüÄÖÜß][^"\n]*"', path.read_text(encoding="utf-8")), path.name

@@ -62,7 +62,9 @@ def test_layout_fits_in_every_language(qapp, dialog, language, monkeypatch):
             d.mode_picker.setCurrentIndex(settings.MODES.index(mode))
             qapp.processEvents()
             layouts.add(_layout(d))
-            assert d.width() < 800, f"{language}/{mode}: window too wide ({d.width()})"
+            # Relative to the font, which differs between platforms (Windows renders larger).
+            limit = 12 * d.fontMetrics().horizontalAdvance("x" * 10)
+            assert d.width() < limit, f"{language}/{mode}: window too wide ({d.width()} >= {limit})"
         # Switching methods must not resize the window or move the fields.
         assert len(layouts) == 1, layouts
         d.close()

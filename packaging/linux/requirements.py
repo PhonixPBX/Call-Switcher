@@ -67,7 +67,7 @@ def _wheel(package, arch):
 
 
 def main():
-    lock = tomllib.loads((ROOT / "uv.lock").read_text())
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     packages = {canonicalize_name(p["name"]): p for p in lock["package"]}
 
     sources = {}  # url -> source, so wheels for all architectures are listed once
