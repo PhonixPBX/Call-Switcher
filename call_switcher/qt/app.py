@@ -38,11 +38,14 @@ def _private_dir() -> str:
     return path
 
 
-def pipe_name(directory: pathlib.Path) -> str:
-    """Windows: named pipes are visible to all users of the machine, so their name is not
-    guessable: it ends in a random token kept in the user's profile, which others cannot read."""
+def pipe_name(directory: pathlib.Path, renew: bool = False) -> str:
+    """Windows: the pipe name ends in a random token kept in the user's profile. Pipe names
+    are visible to all users of the machine, so a client also checks who serves the pipe
+    (send_to_running); if another user took the name, `renew` picks a new token."""
     path = directory / "instance-token"
     directory.mkdir(parents=True, exist_ok=True)
+    if renew:
+        path.write_text(secrets.token_hex(16))
     try:
         with open(path, "x") as f:  # exclusive, so two first starts agree on one token
             f.write(secrets.token_hex(16))
@@ -51,9 +54,9 @@ def pipe_name(directory: pathlib.Path) -> str:
     return f"{settings.BUNDLE_ID}-{path.read_text().strip()}"
 
 
-def socket_path() -> str:
+def socket_path(renew: bool = False) -> str:
     if sys.platform == "win32":
-        return pipe_name(pathlib.Path(os.environ["LOCALAPPDATA"]) / "Call Switcher")
+        return pipe_name(pathlib.Path(os.environ["LOCALAPPDATA"]) / "Call Switcher", renew)
     # XDG_RUNTIME_DIR is private to the user (0700), unlike /tmp.
     runtime = os.environ.get("XDG_RUNTIME_DIR") or _private_dir()
     if os.path.exists("/.flatpak-info"):
@@ -68,6 +71,11 @@ def send_to_running(message: str) -> bool:
     sock.connectToServer(socket_path())
     if not sock.waitForConnected(500):
         return False
+    if sys.platform == "win32":
+        from .host_windows import pipe_server_is_current_user
+        if not pipe_server_is_current_user(int(sock.socketDescriptor())):
+            sock.abort()
+            return False  # the app then listens under a new name
     sock.write(f"{message}\n".encode())
     sock.waitForBytesWritten(1000)
     sock.disconnectFromServer()
@@ -84,7 +92,10 @@ class App:
         self.server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self.server.newConnection.connect(self._accept)
         QLocalServer.removeServer(socket_path())  # left over from a crash; no other instance answered
-        if not self.server.listen(socket_path()):
+        listening = self.server.listen(socket_path())
+        if not listening and sys.platform == "win32":
+            listening = self.server.listen(socket_path(renew=True))  # someone else took the name
+        if not listening:
             ui.show_alert(_("Could not start Call Switcher"), self.server.errorString())
             raise SystemExit(1)
 
