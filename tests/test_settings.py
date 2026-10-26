@@ -42,5 +42,5 @@ def test_mode_label_without_app():
 
 def test_bundle_id_matches_info_plist():
     # The app detects that it runs as the built bundle by comparing these.
-    pyproject = tomllib.loads((pathlib.Path(__file__).parents[1] / "pyproject.toml").read_text())
+    pyproject = tomllib.loads((pathlib.Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["tool"]["py2app"]["plist"]["CFBundleIdentifier"] == settings.BUNDLE_ID
