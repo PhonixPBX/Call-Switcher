@@ -28,7 +28,7 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
 
       - name: Install dependencies
         run: uv sync --locked --python "${{ steps.python.outputs.python-path }}"
@@ -91,7 +91,7 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
